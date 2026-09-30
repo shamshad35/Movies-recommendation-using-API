@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Movie Recommender</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d29;
+    --accent: #e63946;
+    --text: #f1f1f1;
+    --muted: #9a9ca8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem 1rem;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  p.subtitle { color: var(--muted); margin-top: 0; margin-bottom: 1.5rem; }
+  .search-row { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  select, button, input {
+    padding: 0.65rem 0.9rem;
+    border-radius: 8px;
+    border: 1px solid #2c2f3d;
+    background: var(--card);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  select { flex: 1; }
+  button {
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button:hover { opacity: 0.9; }
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  .card h3 { margin: 0 0 0.25rem 0; font-size: 1.05rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; }
+  .score { color: var(--accent); font-weight: 600; }
+  #status { color: var(--muted); margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎬 Movie Recommender</h1>
+  <p class="subtitle">Content-based: pick a movie, get similar ones by genre, cast, director & plot.</p>
+
+  <div class="search-row">
+    <select id="movieSelect"><option>Loading movies...</option></select>
+    <button id="recommendBtn">Recommend</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+  const API_BASE = "";
+
+  async function loadMovies() {
+    const res = await fetch(`${API_BASE}/api/movies`);
+    const data = await res.json();
+    const select = document.getElementById("movieSelect");
+    select.innerHTML = "";
+    data.movies
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.title;
+        opt.textContent = `${m.title} (${m.year})`;
+        select.appendChild(opt);
+      });
+  }
+
+  async function getRecommendations() {
+    const title = document.getElementById("movieSelect").value;
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+    status.textContent = "Finding similar movies...";
+    results.innerHTML = "";
+
+    try {
+      const res = await fetch(`${API_BASE}/api/recommend?title=${encodeURIComponent(title)}&top_n=5`);
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      status.textContent = `Because you liked "${data.query}":`;
+
+      data.recommendations.forEach((m) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${m.title} <span class="meta">(${m.year})</span></h3>
+          <div class="meta">${m.genres}</div>
+          <div class="score">similarity: ${(m.similarity * 100).toFixed(1)}%</div>
+        `;
+        results.appendChild(card);
+      });
+    } catch (err) {
+      status.textContent = "Something went wrong. Please try again.";
+    }
+  }
+
+  document.getElementById("recommendBtn").addEventListener("click", getRecommendations);
+  loadMovies();
+</script>
+</body>
+</html>
